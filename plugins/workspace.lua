@@ -3,6 +3,7 @@ local DocView = require "core.docview"
 local config = require "core.config"
 local ok, scale = pcall(require, "plugins.scale")
 if not ok then scale = nil end
+local hasWindowLib = nil ~= rawget(_G, 'window')
 
 local workspace_filename = ".lite_workspace.lua"
 
@@ -139,6 +140,13 @@ local function save_workspace()
     else
       t.scale = SCALE
     end
+    if hasWindowLib then
+      t.window = {}
+      t.window.mode = window.get_mode()
+      local x, y = window.get_position()
+      local w, h = window.get_size()
+      t.window.bounds = { w = w, h = h, x = x, y = y }
+    end
     fp:write("return ", serialize(t), "\n")
     fp:close()
   end
@@ -158,6 +166,15 @@ local function load_workspace()
       config.draw_whitespace = t.config.draw_whitespace
       config.draw_indent_guide = t.config.draw_indent_guide
       if scale then scale.set_scale(t.scale) end
+    end
+    if hasWindowLib and t.window then
+      local mode = t.window.mode
+        window.set_position(t.window.bounds.x, t.window.bounds.y)
+      if "normal" == mode then
+        window.set_size(t.window.bounds.w, t.window.bounds.h)
+      else
+        window.set_mode(mode)
+      end
     end
   end
 end
