@@ -1,5 +1,8 @@
 local core = require "core"
 local DocView = require "core.docview"
+local config = require "core.config"
+local ok, scale = pcall(require, "plugins.scale")
+if not ok then scale = nil end
 
 local workspace_filename = ".lite_workspace.lua"
 
@@ -126,8 +129,17 @@ end
 local function save_workspace()
   local root = get_unlocked_root(core.root_view.root_node)
   local fp = io.open(workspace_filename, "w")
-  if fp then
-    fp:write("return ", serialize(save_node(root)), "\n")
+  if nil ~= fp then
+    local t = save_node(root)
+    t.config = {}
+    t.config.draw_whitespace = config.draw_whitespace
+    t.config.draw_indent_guide = config.draw_indent_guide
+    if scale then
+      t.scale = scale.get_scale()
+    else
+      t.scale = SCALE
+    end
+    fp:write("return ", serialize(t), "\n")
     fp:close()
   end
 end
@@ -141,6 +153,11 @@ local function load_workspace()
     local active_view = load_node(root, t)
     if active_view then
       core.set_active_view(active_view)
+    end
+    if t.config then
+      config.draw_whitespace = t.config.draw_whitespace
+      config.draw_indent_guide = t.config.draw_indent_guide
+      if scale then scale.set_scale(t.scale) end
     end
   end
 end
@@ -162,3 +179,4 @@ function core.run(...)
   core.run = run
   return core.run(...)
 end
+
